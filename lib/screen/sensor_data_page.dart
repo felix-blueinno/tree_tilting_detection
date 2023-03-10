@@ -6,7 +6,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
+import '../model/sensor_data.dart';
 import '../service/firestore_provider.dart';
+
+const _markdownDescription = '''\n
+Assumes that the device is stationary and the sensor is mounted to a tree stem,
+where the y-axis is only axis has force (gravity) acting on it.
+''';
 
 class SensorDataPage extends ConsumerWidget {
   const SensorDataPage({super.key, required this.docID});
@@ -39,40 +45,27 @@ class SensorDataPage extends ConsumerWidget {
             final angle = atan(y / sqrt(pow(x, 2) + pow(z, 2)));
             final angleInDegrees = (angle * 180 / pi).abs();
 
+            final isFalling = angleInDegrees.abs() < 30;
+
             return Scaffold(
+              backgroundColor: isFalling ? colorScheme.errorContainer : null,
               appBar: AppBar(title: Text('${data.lat}, ${data.lng}')),
-              body: ListView(
+              body: Column(
                 children: [
                   ListTile(
-                    leading: angleInDegrees.abs() < 30
+                    leading: isFalling
                         ? Icon(Icons.warning_amber_outlined, color: colorScheme.error)
                         : const Icon(Icons.nature_people_outlined),
-                    selected: angleInDegrees.abs() < 30,
-                    selectedTileColor: colorScheme.errorContainer,
-                    tileColor: colorScheme.primaryContainer,
                     title: MarkdownBody(data: 'Angle to ground: **${angleInDegrees.toStringAsFixed(2)}°**'),
-                    subtitle: const MarkdownBody(
-                      data: '''\n
-Assumes that the device is stationary and the sensor is mounted to a tree stem,
-where the y-axis is only axis has force (gravity) acting on it.
-''',
-                    ),
+                    subtitle: const MarkdownBody(data: _markdownDescription),
                     trailing: Image.asset('assets/images/angle formula.png'),
                   ),
-                  AccelerationChart(
-                    title: 'Accelerometer Readings (X)',
-                    x: ts,
-                    y: xs,
-                  ),
-                  AccelerationChart(
-                    title: 'Accelerometer Readings (Y)',
-                    x: ts,
-                    y: ys,
-                  ),
-                  AccelerationChart(
-                    title: 'Accelerometer Readings (Z)',
-                    x: ts,
-                    y: zs,
+                  const Divider(),
+                  Expanded(
+                    child: AccelerationChart(
+                      title: 'Accelerometer Readings',
+                      coordinates: coordinates,
+                    ),
                   ),
                 ],
               ),
@@ -90,19 +83,17 @@ class AccelerationChart extends ConsumerWidget {
 
   const AccelerationChart({
     super.key,
-    required this.y,
-    required this.x,
+    required this.coordinates,
     required this.title,
   });
 
-  final List<DateTime> x;
-  final List<double> y;
+  final List<Coordinate> coordinates;
   final String title;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return SfCartesianChart(
-      title: ChartTitle(text: 'Accelerometer Readings (Y)'),
+      title: ChartTitle(text: title),
       primaryXAxis: NumericAxis(
         axisLabelFormatter: (args) {
           final millis = args.value.toInt();
@@ -118,13 +109,34 @@ class AccelerationChart extends ConsumerWidget {
         minimum: min,
         maximum: max,
       ),
+      legend: Legend(
+        isVisible: true,
+        position: LegendPosition.right,
+      ),
       series: [
         LineSeries(
           isVisibleInLegend: true,
-          dataSource: x,
-          xValueMapper: (_, index) => x[index].millisecondsSinceEpoch,
-          yValueMapper: (_, index) => y[index],
+          dataSource: coordinates,
+          xValueMapper: (coordinate, index) => coordinate.t.millisecondsSinceEpoch,
+          yValueMapper: (coordinate, index) => coordinate.x,
           animationDuration: 0,
+          name: 'X',
+        ),
+        LineSeries(
+          isVisibleInLegend: true,
+          dataSource: coordinates,
+          xValueMapper: (coordinate, index) => coordinate.t.millisecondsSinceEpoch,
+          yValueMapper: (coordinate, index) => coordinate.y,
+          animationDuration: 0,
+          name: 'Y',
+        ),
+        LineSeries(
+          isVisibleInLegend: true,
+          dataSource: coordinates,
+          xValueMapper: (coordinate, index) => coordinate.t.millisecondsSinceEpoch,
+          yValueMapper: (coordinate, index) => coordinate.z,
+          animationDuration: 0,
+          name: 'Z',
         ),
       ],
       enableAxisAnimation: false,
