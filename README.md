@@ -1,3 +1,8 @@
 # This Is Only A Template
 
-# Follow Instructions [Here](https://docs.google.com/document/d/1k4AkwX6fUR4t-Icm3XAe5yQJyWZleQGLeN920t1_jpQ/edit?usp=sharing)
+# Follow Instructions [Here](instructions.html)
+
+```bash
+flutter pub get
+flutter pub run build_runner build --delete-conflicting-outputs
+```
